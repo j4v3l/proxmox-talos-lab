@@ -29,6 +29,7 @@ render-checks:
     helm lint gitops/apps/argocd-repositories
     helm lint gitops/apps/platform-aliases
     helm lint gitops/apps/longhorn-lab-single
+    helm lint gitops/apps/homarr-bootstrap
     helm lint gitops/apps/whoami
     helm lint gitops/apps/uptime-kuma
     helm lint gitops/apps/adguard-home
@@ -40,6 +41,7 @@ render-checks:
     helm template argocd-repositories gitops/apps/argocd-repositories --namespace argocd >/tmp/argocd-repositories.yaml
     helm template platform-aliases gitops/apps/platform-aliases --namespace argocd >/tmp/platform-aliases.yaml
     helm template longhorn-lab-single gitops/apps/longhorn-lab-single >/tmp/longhorn-lab-single.yaml
+    helm template homarr-bootstrap gitops/apps/homarr-bootstrap --namespace homarr >/tmp/homarr-bootstrap.yaml
     helm template whoami gitops/apps/whoami --namespace lab >/tmp/gitops-whoami.yaml
     helm template uptime-kuma gitops/apps/uptime-kuma --namespace uptime-kuma >/tmp/uptime-kuma.yaml
     helm template adguard-home gitops/apps/adguard-home --namespace adguard-home >/tmp/adguard-home.yaml

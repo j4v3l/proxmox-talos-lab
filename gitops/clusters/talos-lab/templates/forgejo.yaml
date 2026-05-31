@@ -42,7 +42,7 @@ spec:
                   pathType: Prefix
         gitea:
           admin:
-            username: admin
+            username: labadmin
             email: admin@{{ .Values.labBaseDomain }}
             passwordMode: initialOnlyRequireReset
           metrics:
