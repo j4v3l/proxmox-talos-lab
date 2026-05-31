@@ -1,6 +1,6 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-example_gitops_repo := "https://github.com/example/Proxmox-Talos.git"
+example_gitops_repo := "https://github.com/j4v3l/proxmox-talos-lab.git"
 
 default:
     @just --list

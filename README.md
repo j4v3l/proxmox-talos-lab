@@ -74,7 +74,7 @@ cp terraform/infra/terraform.tfvars.example terraform/infra/lab.auto.tfvars
 cp terraform/platform/terraform.tfvars.example terraform/platform/lab.auto.tfvars
 ```
 
-7. Push this repository to your external Git provider and set `gitops_repo_url` in `terraform/platform/lab.auto.tfvars`. Argo CD uses that URL as the source of truth for the app layer.
+7. Push this repository to GitHub and set `gitops_repo_url = "https://github.com/j4v3l/proxmox-talos-lab.git"` in `terraform/platform/lab.auto.tfvars`. Argo CD uses that URL as the source of truth for the app layer.
 
 8. Run preflight:
 
