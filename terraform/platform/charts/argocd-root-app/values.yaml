@@ -1,5 +1,5 @@
 gitOpsRepoUrl: ""
-gitOpsRevision: main
+gitOpsRevision: dev
 labBaseDomain: lab.home.arpa
 ingressLoadBalancerIp: 192.168.80.30
 adguardDnsIp: 192.168.80.31

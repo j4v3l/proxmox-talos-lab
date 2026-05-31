@@ -31,7 +31,7 @@ variable "gitops_repo_url" {
 variable "gitops_revision" {
   description = "Git revision Argo CD should sync."
   type        = string
-  default     = "main"
+  default     = "dev"
 }
 
 variable "lab_base_domain" {

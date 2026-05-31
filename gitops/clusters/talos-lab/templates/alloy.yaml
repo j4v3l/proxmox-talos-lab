@@ -35,7 +35,7 @@ spec:
               loki.process "pods" {
                 stage.static_labels {
                   values = {
-                    cluster = "talos-lab"
+                    cluster = "talos-lab",
                   }
                 }
                 forward_to = [loki.write.loki.receiver]
