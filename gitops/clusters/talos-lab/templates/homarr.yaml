@@ -47,6 +47,21 @@ spec:
           AUTH_PROVIDERS: credentials
         database:
           type: sqlite
+        service:
+          ports:
+            app:
+              port: 3000
+              targetPort: http
+        livenessProbe:
+          httpGet:
+            port: 3000
+        readinessProbe:
+          httpGet:
+            port: 3000
+        containerPorts:
+          http:
+            port: 3000
+            protocol: TCP
         ingress:
           enabled: true
           ingressClassName: nginx
