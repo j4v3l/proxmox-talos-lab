@@ -25,11 +25,26 @@ validate:
 render-checks:
     helm lint terraform/platform/charts/metallb-config
     helm lint terraform/platform/charts/argocd-root-app --set gitOpsRepoUrl={{example_gitops_repo}}
+    helm lint gitops/clusters/talos-lab --set gitOpsRepoUrl={{example_gitops_repo}}
+    helm lint gitops/apps/argocd-repositories
+    helm lint gitops/apps/platform-aliases
+    helm lint gitops/apps/longhorn-lab-single
+    helm lint gitops/apps/whoami
+    helm lint gitops/apps/uptime-kuma
+    helm lint gitops/apps/adguard-home
+    helm lint gitops/apps/forgejo-runner
     helm lint terraform/platform/charts/whoami
     helm template metallb-config terraform/platform/charts/metallb-config --namespace metallb-system >/tmp/metallb-config.yaml
     helm template argocd-root-app terraform/platform/charts/argocd-root-app --namespace argocd --set gitOpsRepoUrl={{example_gitops_repo}} >/tmp/argocd-root-app.yaml
+    helm template talos-lab gitops/clusters/talos-lab --set gitOpsRepoUrl={{example_gitops_repo}} >/tmp/talos-lab-apps.yaml
+    helm template argocd-repositories gitops/apps/argocd-repositories --namespace argocd >/tmp/argocd-repositories.yaml
+    helm template platform-aliases gitops/apps/platform-aliases --namespace argocd >/tmp/platform-aliases.yaml
+    helm template longhorn-lab-single gitops/apps/longhorn-lab-single >/tmp/longhorn-lab-single.yaml
+    helm template whoami gitops/apps/whoami --namespace lab >/tmp/gitops-whoami.yaml
+    helm template uptime-kuma gitops/apps/uptime-kuma --namespace uptime-kuma >/tmp/uptime-kuma.yaml
+    helm template adguard-home gitops/apps/adguard-home --namespace adguard-home >/tmp/adguard-home.yaml
+    helm template forgejo-runner gitops/apps/forgejo-runner --namespace forgejo >/tmp/forgejo-runner.yaml
     helm template whoami terraform/platform/charts/whoami --namespace lab >/tmp/whoami.yaml
-    kubectl kustomize gitops/clusters/talos-lab >/tmp/talos-lab-kustomize.yaml
 
 opnsense-check:
     @code="$(curl -ksS -o /dev/null -w '%{http_code}' --connect-timeout 8 https://192.168.80.1/ 2>/dev/null || true)"; if [[ "$code" =~ ^(200|301|302|401|403)$ ]]; then echo "OK: OPNsense HTTPS reachable at 192.168.80.1"; else echo "FAIL: OPNsense HTTPS unreachable at 192.168.80.1; HTTP status was ${code:-none}" >&2; exit 1; fi

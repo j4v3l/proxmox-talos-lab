@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homarr
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://homarr-labs.github.io/charts/
+    chart: homarr
+    targetRevision: 8.19.0
+    helm:
+      releaseName: homarr
+      values: |
+        env:
+          TZ: America/New_York
+          AUTH_PROVIDERS: credentials
+        database:
+          type: sqlite
+        ingress:
+          enabled: true
+          ingressClassName: nginx
+          hosts:
+            - host: {{ include "talos-lab.sslipHost" (dict "root" . "name" "homarr") }}
+              paths:
+                - path: /
+            - host: {{ include "talos-lab.labHost" (dict "root" . "name" "homarr") }}
+              paths:
+                - path: /
+        persistence:
+          homarrDatabase:
+            enabled: true
+            storageClassName: longhorn-lab-single
+            size: 1Gi
+        resources:
+          requests:
+            cpu: 50m
+            memory: 192Mi
+          limits:
+            memory: 384Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: homarr
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

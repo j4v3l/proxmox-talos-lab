@@ -1,0 +1,5 @@
+image:
+  repository: code.forgejo.org/forgejo/runner
+  tag: v12.10.2
+connectionSecretName: forgejo-runner-connection
+runnerLabel: lab-host:host

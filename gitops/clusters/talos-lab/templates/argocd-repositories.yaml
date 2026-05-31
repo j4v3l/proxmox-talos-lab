@@ -1,8 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: talos-lab
+  name: argocd-repositories
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -10,14 +12,7 @@ spec:
   source:
     repoURL: {{ required "gitOpsRepoUrl is required" .Values.gitOpsRepoUrl | quote }}
     targetRevision: {{ .Values.gitOpsRevision | quote }}
-    path: gitops/clusters/talos-lab
-    helm:
-      values: |
-        gitOpsRepoUrl: {{ .Values.gitOpsRepoUrl | quote }}
-        gitOpsRevision: {{ .Values.gitOpsRevision | quote }}
-        labBaseDomain: {{ .Values.labBaseDomain | quote }}
-        ingressLoadBalancerIp: {{ .Values.ingressLoadBalancerIp | quote }}
-        adguardDnsIp: {{ .Values.adguardDnsIp | quote }}
+    path: gitops/apps/argocd-repositories
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
@@ -27,3 +22,4 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true

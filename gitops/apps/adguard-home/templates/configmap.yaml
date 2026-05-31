@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adguard-home-bootstrap
+data:
+  AdGuardHome.yaml: |
+    http:
+      address: 0.0.0.0:3000
+      session_ttl: 720h
+    users: []
+    language: en
+    theme: auto
+    dns:
+      bind_hosts:
+        - 0.0.0.0
+      port: 53
+      protection_enabled: true
+      filtering_enabled: true
+      upstream_mode: parallel
+      bootstrap_dns:
+{{- range .Values.bootstrapDns }}
+        - {{ . | quote }}
+{{- end }}
+      upstream_dns:
+{{- range .Values.upstreamDns }}
+        - {{ . | quote }}
+{{- end }}
+    schema_version: 29

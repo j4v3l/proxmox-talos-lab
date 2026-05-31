@@ -1,0 +1,6 @@
+apiVersion: v2
+name: forgejo-runner
+description: Minimal Forgejo runner for beginner lint and test workflows.
+type: application
+version: 0.1.0
+appVersion: "12.10.2"

@@ -2,9 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: whoami
-  namespace: lab
+  labels:
+    app.kubernetes.io/name: whoami
 spec:
-  replicas: 2
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: whoami
@@ -15,7 +16,7 @@ spec:
     spec:
       containers:
         - name: whoami
-          image: traefik/whoami:v1.11
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports:
             - name: http
               containerPort: 80
@@ -26,4 +27,3 @@ spec:
             limits:
               cpu: 250m
               memory: 128Mi
-

@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-aliases
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ required "gitOpsRepoUrl is required" .Values.gitOpsRepoUrl | quote }}
+    targetRevision: {{ .Values.gitOpsRevision | quote }}
+    path: gitops/apps/platform-aliases
+    helm:
+      releaseName: platform-aliases
+      values: |
+        aliases:
+          - name: argocd
+            namespace: argocd
+            serviceName: argo-cd-argocd-server
+            servicePort: 80
+            host: {{ include "talos-lab.labHost" (dict "root" . "name" "argocd") }}
+          - name: rancher
+            namespace: cattle-system
+            serviceName: rancher
+            servicePort: 80
+            host: {{ include "talos-lab.labHost" (dict "root" . "name" "rancher") }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

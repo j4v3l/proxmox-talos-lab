@@ -26,16 +26,31 @@ kubectl -n ingress-nginx get svc
 kubectl -n cattle-system get pods
 kubectl -n argocd get applications
 kubectl -n longhorn-system get pods
+kubectl -n homarr get pods
+kubectl -n uptime-kuma get pods
+kubectl -n forgejo get pods
+kubectl -n monitoring get pods
+kubectl -n adguard-home get svc
 ```
 
 ## UI URLs
 
 - Rancher: `http://rancher.192.168.80.30.sslip.io`
+- Rancher alias: `https://rancher.lab.home.arpa`
 - Argo CD: `http://argocd.192.168.80.30.sslip.io`
+- Argo CD alias: `http://argocd.lab.home.arpa`
 - Longhorn: `http://longhorn.192.168.80.30.sslip.io`
-- Sample app: `http://whoami.192.168.80.30.sslip.io`
+- Longhorn alias: `http://longhorn.lab.home.arpa`
+- Homarr: `http://homarr.lab.home.arpa`
+- Uptime Kuma: `http://status.lab.home.arpa`
+- Forgejo: `https://git.lab.home.arpa`
+- Grafana: `http://grafana.lab.home.arpa`
+- Prometheus: `http://prometheus.lab.home.arpa`
+- AdGuard UI: `http://adguard.lab.home.arpa`
+- Sample app: `http://whoami.lab.home.arpa`
 
 Rancher uses the bootstrap password generated or supplied in `terraform/platform`.
+Forgejo creates its own admin secret in-cluster. Grafana stores its admin password in the release secret.
 
 ## Network Checks
 
@@ -51,6 +66,13 @@ From the Caddy host at `192.168.10.128`, verify proxy reachability to ingress:
 ```bash
 curl -I --connect-timeout 5 http://192.168.80.30
 curl -kI --connect-timeout 5 https://192.168.80.30
+```
+
+Check AdGuard DNS directly:
+
+```bash
+dig @192.168.80.31 grafana.lab.home.arpa
+dig @192.168.80.31 github.com
 ```
 
 ## Destroy Order

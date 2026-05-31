@@ -3,6 +3,8 @@ kind: Application
 metadata:
   name: longhorn
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -39,7 +41,9 @@ spec:
         ingress:
           enabled: true
           ingressClassName: nginx
-          host: longhorn.192.168.80.30.sslip.io
+          host: {{ include "talos-lab.sslipHost" (dict "root" . "name" "longhorn") }}
+          extraHosts:
+            - {{ include "talos-lab.labHost" (dict "root" . "name" "longhorn") }}
   destination:
     server: https://kubernetes.default.svc
     namespace: longhorn-system

@@ -228,8 +228,11 @@ resource "helm_release" "argocd_root_app" {
 
   values = [
     yamlencode({
-      gitOpsRepoUrl  = var.gitops_repo_url
-      gitOpsRevision = var.gitops_revision
+      gitOpsRepoUrl         = var.gitops_repo_url
+      gitOpsRevision        = var.gitops_revision
+      labBaseDomain         = var.lab_base_domain
+      ingressLoadBalancerIp = var.ingress_load_balancer_ip
+      adguardDnsIp          = var.adguard_dns_ip
     }),
   ]
 

@@ -3,6 +3,8 @@ kubeconfig_path = "../../_out/kubeconfig"
 # Push this repository to GitHub, then set the HTTPS clone URL here.
 gitops_repo_url = "https://github.com/YOUR_USERNAME/Proxmox-Talos.git"
 gitops_revision = "main"
+lab_base_domain = "lab.home.arpa"
+adguard_dns_ip  = "192.168.80.31"
 
 cluster_vip              = "192.168.80.10"
 ingress_load_balancer_ip = "192.168.80.30"

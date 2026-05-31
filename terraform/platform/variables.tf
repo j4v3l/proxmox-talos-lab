@@ -34,6 +34,18 @@ variable "gitops_revision" {
   default     = "main"
 }
 
+variable "lab_base_domain" {
+  description = "Base DNS suffix for local lab hostnames."
+  type        = string
+  default     = "lab.home.arpa"
+}
+
+variable "adguard_dns_ip" {
+  description = "Dedicated MetalLB IP for the AdGuard Home DNS service."
+  type        = string
+  default     = "192.168.80.31"
+}
+
 variable "rancher_hostname" {
   description = "Rancher ingress hostname."
   type        = string
