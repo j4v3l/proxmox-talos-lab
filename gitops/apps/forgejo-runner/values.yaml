@@ -3,3 +3,5 @@ image:
   tag: v12.10.2
 connectionSecretName: forgejo-runner-connection
 runnerLabel: lab-host:host
+hostAliases: []
+extraEnv: []

@@ -108,14 +108,14 @@ The `forgejo-runner` Argo app is created but not auto-synced. Bootstrap it after
 
 ```bash
 kubectl -n forgejo create secret generic forgejo-runner-connection \
-  --from-literal=FORGEJO_INSTANCE_URL=https://git.lab.home.arpa \
+  --from-literal=FORGEJO_INSTANCE_URL=http://forgejo-http.forgejo.svc.cluster.local:3000 \
   --from-literal=FORGEJO_RUNNER_UUID='replace-me' \
   --from-literal=FORGEJO_RUNNER_TOKEN='replace-me'
 ```
 
 3. Sync the runner app from Argo CD.
 
-The runner is intentionally minimal and only advertises `lab-host:host` for beginner lint and test jobs. It does not build containers.
+The runner is intentionally minimal and only advertises `lab-host:host` for beginner lint and test jobs. It does not build containers. In the smoke lab, the runner chart also maps `git.lab.home.arpa` to the ingress IP and disables Git SSL verification so repository operations still work before you install a trusted certificate.
 
 Example workflow:
 

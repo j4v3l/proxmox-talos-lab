@@ -14,6 +14,10 @@ spec:
       labels:
         app.kubernetes.io/name: forgejo-runner
     spec:
+      {{- with .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: forgejo-runner
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -45,6 +49,10 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ .Values.connectionSecretName }}
+          {{- with .Values.extraEnv }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: data
               mountPath: /data

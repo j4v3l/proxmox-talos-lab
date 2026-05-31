@@ -13,6 +13,15 @@ spec:
     repoURL: {{ required "gitOpsRepoUrl is required" .Values.gitOpsRepoUrl | quote }}
     targetRevision: {{ .Values.gitOpsRevision | quote }}
     path: gitops/apps/forgejo-runner
+    helm:
+      values: |
+        hostAliases:
+          - ip: {{ .Values.ingressLoadBalancerIp | quote }}
+            hostnames:
+              - {{ include "talos-lab.labHost" (dict "root" . "name" "git") | quote }}
+        extraEnv:
+          - name: GIT_SSL_NO_VERIFY
+            value: "true"
   destination:
     server: https://kubernetes.default.svc
     namespace: forgejo
