@@ -32,7 +32,7 @@ spec:
           enabled: false
         kubeControllerManager:
           enabled: false
-        prometheus-node-exporter:
+        nodeExporter:
           enabled: false
         grafana:
           ingress:
