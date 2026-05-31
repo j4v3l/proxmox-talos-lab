@@ -53,9 +53,15 @@ spec:
               port: 3000
               targetPort: http
         livenessProbe:
+          initialDelaySeconds: 60
+          timeoutSeconds: 5
+          failureThreshold: 6
           httpGet:
             port: 3000
         readinessProbe:
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 6
           httpGet:
             port: 3000
         containerPorts:
