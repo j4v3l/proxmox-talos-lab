@@ -1,0 +1,13 @@
+proxmox_endpoint  = "https://192.168.0.119:8006/"
+proxmox_node_name = "pve"
+proxmox_insecure  = true
+
+vm_datastore_id  = "local-lvm"
+iso_datastore_id = "local"
+network_bridge   = "vmbr0"
+vlan_id          = 80
+
+cluster_name       = "talos-lab"
+cluster_vip        = "192.168.80.10"
+talos_version      = "v1.13.3"
+kubernetes_version = "v1.35.5"

@@ -1,0 +1,6 @@
+hostname: whoami.192.168.80.30.sslip.io
+replicas: 2
+image:
+  repository: traefik/whoami
+  tag: v1.11
+

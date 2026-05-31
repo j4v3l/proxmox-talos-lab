@@ -1,0 +1,7 @@
+apiVersion: v2
+name: argocd-root-app
+description: Argo CD root application for the Talos lab GitOps tree.
+type: application
+version: 0.1.0
+appVersion: "1.0"
+

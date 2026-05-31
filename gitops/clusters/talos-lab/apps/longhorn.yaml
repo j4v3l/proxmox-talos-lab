@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://charts.longhorn.io
+    chart: longhorn
+    targetRevision: 1.11.2
+    helm:
+      releaseName: longhorn
+      values: |
+        preUpgradeChecker:
+          jobEnabled: false
+        persistence:
+          defaultClass: true
+          defaultClassReplicaCount: 2
+          reclaimPolicy: Delete
+        defaultSettings:
+          defaultDataPath: /var/mnt/longhorn
+          defaultReplicaCount: 2
+          storageMinimalAvailablePercentage: 10
+          storageReservedPercentageForDefaultDisk: 10
+          upgradeChecker: false
+        longhornManager:
+          nodeSelector:
+            longhorn.io/storage: "true"
+        longhornDriver:
+          nodeSelector:
+            longhorn.io/storage: "true"
+        longhornUI:
+          replicas: 1
+          nodeSelector:
+            longhorn.io/storage: "true"
+        ingress:
+          enabled: true
+          ingressClassName: nginx
+          host: longhorn.192.168.80.30.sslip.io
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

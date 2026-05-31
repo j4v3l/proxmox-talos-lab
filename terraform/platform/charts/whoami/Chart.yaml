@@ -1,0 +1,7 @@
+apiVersion: v2
+name: whoami
+description: Smoke workload for the Talos lab ingress path.
+type: application
+version: 0.1.0
+appVersion: "1.11"
+
