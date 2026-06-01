@@ -32,6 +32,8 @@ spec:
           enabled: false
         kubeControllerManager:
           enabled: false
+        kubelet:
+          enabled: false
         nodeExporter:
           enabled: false
         grafana:
