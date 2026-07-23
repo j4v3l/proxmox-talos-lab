@@ -1,0 +1,32 @@
+log:
+  level: info
+
+runner:
+  file: /var/lib/forgejo-runner/.runner
+  capacity: 1
+  timeout: 3h
+  shutdown_timeout: 30s
+  fetch_timeout: 10s
+  labels:
+    - "ubuntu-24.04:docker://{{ forgejo_runner_job_image }}"
+
+cache:
+  enabled: true
+  dir: /var/lib/forgejo-runner/cache
+  host: host.containers.internal
+  port: 0
+
+container:
+  docker_host: unix:///run/forgejo-runner/podman.sock
+  privileged: false
+  options: >-
+    --cpus=2
+    --memory=3g
+    --pids-limit=512
+    --security-opt=no-new-privileges
+    --cap-drop=all
+  valid_volumes: []
+  force_pull: false
+
+host:
+  workdir_parent: /var/lib/forgejo-runner/work

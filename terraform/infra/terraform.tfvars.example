@@ -1,11 +1,22 @@
 proxmox_endpoint  = "https://192.168.0.119:8006/"
 proxmox_node_name = "pve"
-proxmox_insecure  = true
+proxmox_insecure  = false
 
-vm_datastore_id  = "local-lvm"
+vm_datastore_id  = "talos-ssd"
 iso_datastore_id = "local"
+secure_boot_enabled           = true
+efi_disk_datastore_id         = "talos-ssd"
+secure_boot_pre_enrolled_keys = false
+siderolink_enabled            = false
+# siderolink_api_url          = "https://<your-omni-siderolink-endpoint>/?jointoken=<token>&grpc_tunnel=true"
 network_bridge   = "vmbr0"
 vlan_id          = 80
+lab_base_domain  = "lab.home.arpa"
+
+# Set these only after the named gate is genuinely complete.
+stopped_pbs_backups_verified      = false
+offline_recovery_capture_verified = false
+hardware_capacity_verified        = false
 
 cluster_name       = "talos-lab"
 cluster_vip        = "192.168.80.10"

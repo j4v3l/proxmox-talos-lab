@@ -1,3 +1,9 @@
-gitOpsRepoUrl: ""
-gitOpsRevision: main
-
+bootstrapRepoUrl: https://github.com/j4v3l/proxmox-talos-lab.git
+bootstrapRevision: main
+appsRepoUrl: https://git.lab.home.arpa/j4v3l/talos-apps.git
+appsRevision: main
+labBaseDomain: lab.home.arpa
+gatewayLoadBalancerIp: 192.168.80.30
+piholePrimaryIp: 192.168.80.31
+piholeSecondaryIp: 192.168.80.32
+forgejoSshIp: 192.168.80.33

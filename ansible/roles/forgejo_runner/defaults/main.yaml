@@ -1,0 +1,6 @@
+---
+forgejo_runner_version: 12.10.2
+forgejo_runner_sha256: 8d8cc22b81dd5ef5852f9cb15965ab85961d4bc91489cb57497ea2507ec2163f
+forgejo_runner_user: forgejo-runner
+forgejo_runner_uid: 1100
+forgejo_runner_job_image: ghcr.io/catthehacker/ubuntu:act-24.04@sha256:5d6a17640b25694988b9db5a4145537b9918e5430116b2cf90d84e837609b382

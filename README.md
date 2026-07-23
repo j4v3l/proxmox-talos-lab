@@ -1,99 +1,71 @@
-# Proxmox + Talos Beginner Lab
+# Proxmox + Talos Production Homelab
 
-This repository bootstraps a five-node Talos Kubernetes lab on a single Proxmox host, then installs the platform pieces needed for learning: Cilium, MetalLB, ingress-nginx, cert-manager, Rancher, Argo CD, Longhorn, and a small sample workload.
+Production-hardened, LAN/VPN-only Talos Kubernetes on one Proxmox host, with a hybrid GitHub/Forgejo GitOps control plane.
 
-The lab targets your Proxmox server at `192.168.0.119` and a VLAN 80 Kubernetes network at `192.168.80.0/24`.
+This repository is the public off-cluster bootstrap and disaster-recovery source for `j4v3l/proxmox-talos-lab`. The private `j4v3l/talos-apps` repository contains application values and SOPS-encrypted secrets; Forgejo is authoritative and GitHub is its one-way off-site mirror.
 
-## What This Builds
+## Current deployment status
 
-- 3 Talos control-plane VMs: `talos-cp-1` through `talos-cp-3`
-- 2 Talos worker VMs: `talos-worker-1` and `talos-worker-2`
-- OPNsense Kubernetes gateway: `192.168.80.1`
-- Kubernetes API VIP: `192.168.80.10`
-- Node DHCP reservations: `192.168.80.21-25`
-- MetalLB pool: `192.168.80.30-49`
-- Ingress IP: `192.168.80.30`
-- UI hostnames through `sslip.io`, for example `rancher.192.168.80.30.sslip.io`
+The repository configuration is prepared for a clean rebuild, but the live host is not production-ready and must not be rebuilt yet:
 
-## Important Capacity Gate
+- Install at least 64 GiB RAM.
+- Add a dedicated 1 TiB-or-larger SSD/NVMe datastore named in local Terraform inputs.
+- Verify stopped PBS backups and offline recovery clones.
+- Supply independent encrypted/versioned S3-compatible backup buckets.
+- Trust the Proxmox CA; production Terraform refuses `proxmox_insecure=true`.
 
-The current Proxmox host is too full for this lab as inspected on May 31, 2026:
+Terraform enforces the backup, recovery, capacity, and TLS acknowledgements before it can replace or create VMs. The existing live cluster is intentionally left untouched until those gates are true.
 
-- `local-lvm` had about 36 GiB free.
-- Available RAM was about 10 GiB.
-- The planned VMs reserve about 360 GiB of VM disk and 28 GiB RAM.
+## Final topology
 
-Run the preflight checks before applying Terraform:
+| Endpoint | Purpose |
+| --- | --- |
+| `192.168.80.10` | Kubernetes API VIP |
+| `192.168.80.21-23` | Talos control planes |
+| `192.168.80.24-25` | Talos workers |
+| `192.168.80.30` | Cilium HTTPS Gateway |
+| `192.168.80.31` | External primary Pi-hole/Unbound VM |
+| `192.168.80.32` | Kubernetes secondary Pi-hole/Unbound |
+| `192.168.80.33:22` | Forgejo SSH LoadBalancer |
+| `192.168.80.34` | Dedicated rootless Podman runner VM |
+
+The two workers have 10 GiB RAM, 40 GiB OS disks, and dedicated 250 GiB Longhorn disks. `longhorn-2r` uses two replicas, best-effort locality, `Retain`, recurring snapshots, and off-host backups.
+
+## Ownership boundary
+
+- `terraform/infra`: Proxmox VMs, Talos machine secrets/configuration, external Pi-hole VM, and runner VM.
+- `terraform/platform`: Gateway API v1.4.1 CRDs, Cilium 1.19.6 with kube-proxy replacement, Argo CD, KSOPS, and the root Application.
+- `gitops/clusters/talos-lab`: public bootstrap Applications and exact `bootstrap`, `platform`, and `apps` AppProjects.
+- Private `talos-apps`: pinned platform values, CloudNativePG, Authentik, Forgejo, Pi-hole, policy, monitoring, and encrypted secrets.
+- OPNsense: DHCP, forced DNS, DoT blocking, inter-VLAN policy, and official `os-crowdsec`.
+
+All ingress-nginx and Kubernetes CrowdSec bouncer configuration has been removed. HTTP services use Gateway API `HTTPRoute`; Forgejo SSH has its own LoadBalancer.
+
+## Safe bootstrap
 
 ```bash
+cp terraform/backend.s3.hcl.example terraform/backend.s3.hcl
+cp terraform/infra/terraform.tfvars.example terraform/infra/production.auto.tfvars
+cp terraform/platform/terraform.tfvars.example terraform/platform/production.auto.tfvars
+cp ansible/inventory/hosts.ini.example ansible/inventory/hosts.ini
+
 just preflight
+just ci
+just init-backends
 ```
 
-It is expected to fail until storage, RAM, VLAN 80, OPNsense, and DHCP reservations are ready.
-
-The same checks are also available through `just preflight`, `just validate`, and `just render-checks`.
-
-## Quick Start
-
-1. Create DHCP reservations from [docs/dhcp-reservations.md](docs/dhcp-reservations.md).
-2. Confirm VLAN 80 is allowed end-to-end on OPNsense, switch trunk port 3, Proxmox `vmbr0`, and the VM port path.
-3. Review the OPNsense policy guide in [docs/opnsense.md](docs/opnsense.md).
-4. For the first smaller validation run, follow [docs/smoke-run.md](docs/smoke-run.md).
-5. Export Proxmox API credentials. The bpg provider supports environment variables such as:
+Only after the hardware, backup, and recovery gates are verified:
 
 ```bash
-export PROXMOX_VE_USERNAME='root@pam'
-export PROXMOX_VE_PASSWORD='your-password'
+terraform -chdir=terraform/infra plan
+terraform -chdir=terraform/infra apply
+just configure-pihole
+just configure-forgejo-runner
+terraform -chdir=terraform/platform plan
+terraform -chdir=terraform/platform apply
+just bootstrap-sops-age
 ```
 
-Or use an API token:
+CI never runs `terraform apply` or `kubectl`. Protected merges to `main` are deployment events; Argo CD performs delivery.
 
-```bash
-export PROXMOX_VE_API_TOKEN='root@pam!token-name=token-value'
-```
-
-6. Copy example variables and edit only the values you understand:
-
-```bash
-cp terraform/infra/terraform.tfvars.example terraform/infra/lab.auto.tfvars
-cp terraform/platform/terraform.tfvars.example terraform/platform/lab.auto.tfvars
-```
-
-7. Run preflight:
-
-```bash
-just preflight
-```
-
-8. Create the VMs and bootstrap Talos:
-
-```bash
-cd terraform/infra
-terraform init
-terraform plan
-terraform apply
-```
-
-9. Install platform services:
-
-```bash
-cd ../platform
-terraform init
-terraform plan
-terraform apply
-```
-
-10. Point `kubectl` and `talosctl` at the generated configs:
-
-```bash
-export KUBECONFIG="$(pwd)/../../_out/kubeconfig"
-export TALOSCONFIG="$(pwd)/../../_out/talosconfig"
-```
-
-## Beginner Notes
-
-- Terraform stage 1, `terraform/infra`, owns only the Proxmox VMs and Talos cluster bootstrap.
-- Terraform stage 2, `terraform/platform`, owns core cluster add-ons that need to exist before GitOps is useful.
-- Argo CD then owns the app layer from `gitops/clusters/talos-lab`.
-- Secrets and generated kubeconfigs are written under `_out/` and ignored by Git.
-- Do not commit `.tfstate`, `.tfvars`, kubeconfigs, Talos configs, passwords, or API tokens.
+See [production readiness](docs/production-readiness.md), [hybrid GitOps](docs/app-layer.md), [operations](docs/operations.md), [backup and restore](docs/backups-and-restore.md), and [incident response](docs/incident-response.md).

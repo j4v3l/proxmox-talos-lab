@@ -1,42 +1,34 @@
-resource "random_password" "rancher_bootstrap" {
-  length  = 24
-  special = false
+data "http" "gateway_api_standard" {
+  url = local.gateway_api_manifest_url
 }
 
-resource "kubernetes_namespace_v1" "metallb_system" {
-  metadata {
-    name = "metallb-system"
-    labels = merge(
-      {
-        name = "metallb-system"
-      },
-      local.privileged_pod_security_labels,
-    )
-  }
+resource "terraform_data" "gateway_api_integrity" {
+  input = sha256(data.http.gateway_api_standard.response_body)
 
   lifecycle {
-    ignore_changes = [
-      metadata[0].annotations,
-    ]
+    precondition {
+      condition     = sha256(data.http.gateway_api_standard.response_body) == var.gateway_api_manifest_sha256
+      error_message = "Gateway API manifest checksum mismatch; review the upstream release before changing the pinned checksum."
+    }
   }
 }
 
-resource "kubernetes_namespace_v1" "longhorn_system" {
-  metadata {
-    name = "longhorn-system"
-    labels = merge(
-      {
-        name = "longhorn-system"
-      },
-      local.privileged_pod_security_labels,
-    )
-  }
+data "kubectl_file_documents" "gateway_api_standard" {
+  content = data.http.gateway_api_standard.response_body
+}
 
-  lifecycle {
-    ignore_changes = [
-      metadata[0].annotations,
-    ]
-  }
+resource "kubectl_manifest" "gateway_api_standard" {
+  for_each = data.kubectl_file_documents.gateway_api_standard.manifests
+
+  yaml_body         = each.value
+  server_side_apply = true
+  force_conflicts   = false
+  wait_for_rollout  = true
+  validate_schema   = true
+
+  depends_on = [
+    terraform_data.gateway_api_integrity,
+  ]
 }
 
 resource "helm_release" "cilium" {
@@ -46,14 +38,15 @@ resource "helm_release" "cilium" {
   chart      = "cilium"
   version    = var.cilium_chart_version
 
+  atomic  = true
   wait    = true
-  timeout = 600
+  timeout = 900
 
   values = [
     yamlencode({
-      k8sServiceHost       = var.cluster_vip
-      k8sServicePort       = "6443"
-      kubeProxyReplacement = "false"
+      k8sServiceHost       = "localhost"
+      k8sServicePort       = "7445"
+      kubeProxyReplacement = true
       ipam = {
         mode = "kubernetes"
       }
@@ -86,283 +79,253 @@ resource "helm_release" "cilium" {
         }
       }
       operator = {
-        replicas = 1
+        replicas = 2
+        prometheus = {
+          enabled = true
+        }
       }
-    }),
-  ]
-}
-
-resource "helm_release" "cert_manager" {
-  name             = "cert-manager"
-  namespace        = "cert-manager"
-  create_namespace = true
-  repository       = "https://charts.jetstack.io"
-  chart            = "cert-manager"
-  version          = var.cert_manager_chart_version
-
-  wait    = true
-  timeout = 600
-
-  values = [
-    yamlencode({
-      crds = {
+      envoy = {
+        enabled = true
+        prometheus = {
+          enabled = true
+        }
+      }
+      gatewayAPI = {
+        enabled    = true
+        enableAlpn = true
+      }
+      hubble = {
+        relay = {
+          enabled = true
+        }
+        metrics = {
+          enabled = [
+            "dns:query;ignoreAAAA",
+            "drop",
+            "flow",
+            "httpV2",
+            "icmp",
+            "port-distribution",
+            "tcp",
+          ]
+          enableOpenMetrics = true
+        }
+      }
+      prometheus = {
         enabled = true
       }
     }),
   ]
 
   depends_on = [
-    helm_release.cilium,
+    kubectl_manifest.gateway_api_standard,
   ]
 }
 
-resource "helm_release" "metallb" {
-  name       = "metallb"
-  namespace  = kubernetes_namespace_v1.metallb_system.metadata[0].name
-  repository = "https://metallb.github.io/metallb"
-  chart      = "metallb"
-  version    = var.metallb_chart_version
-
-  wait    = true
-  timeout = 600
+resource "kubernetes_namespace_v1" "argocd" {
+  metadata {
+    name = "argocd"
+    labels = {
+      "pod-security.kubernetes.io/enforce" = "restricted"
+      "pod-security.kubernetes.io/audit"   = "restricted"
+      "pod-security.kubernetes.io/warn"    = "restricted"
+    }
+  }
 
   depends_on = [
     helm_release.cilium,
-    kubernetes_namespace_v1.metallb_system,
   ]
 }
 
-resource "helm_release" "metallb_config" {
-  name      = "metallb-config"
-  namespace = "metallb-system"
-  chart     = "${path.module}/charts/metallb-config"
+resource "kubernetes_config_map_v1" "argocd_cmp_ksops" {
+  metadata {
+    name      = "argocd-cmp-ksops"
+    namespace = kubernetes_namespace_v1.argocd.metadata[0].name
+  }
 
-  wait    = true
-  timeout = 300
-
-  values = [
-    yamlencode({
-      addresses = var.metallb_address_pool
-    }),
-  ]
-
-  depends_on = [
-    helm_release.metallb,
-  ]
-}
-
-resource "helm_release" "ingress_nginx" {
-  name             = "ingress-nginx"
-  namespace        = "ingress-nginx"
-  create_namespace = true
-  repository       = "https://kubernetes.github.io/ingress-nginx"
-  chart            = "ingress-nginx"
-  version          = var.ingress_nginx_chart_version
-
-  wait    = true
-  timeout = 600
-
-  values = [
-    yamlencode({
-      controller = {
-        replicaCount = 2
-        ingressClassResource = {
-          default = true
-        }
-        service = {
-          type                  = "LoadBalancer"
-          loadBalancerIP        = var.ingress_load_balancer_ip
-          externalTrafficPolicy = "Local"
-        }
-      }
-    }),
-  ]
-
-  depends_on = [
-    helm_release.metallb_config,
-  ]
+  data = {
+    "plugin.yaml" = <<-YAML
+      apiVersion: argoproj.io/v1alpha1
+      kind: ConfigManagementPlugin
+      metadata:
+        name: ksops
+      spec:
+        allowConcurrency: false
+        lockRepo: true
+        discover:
+          find:
+            command:
+              - sh
+              - -c
+              - test -f kustomization.yaml && test -f ../.sops.yaml
+        generate:
+          command:
+            - sh
+            - -c
+            - kustomize build --enable-alpha-plugins --enable-exec .
+    YAML
+  }
 }
 
 resource "helm_release" "argocd" {
   name             = "argo-cd"
-  namespace        = "argocd"
-  create_namespace = true
+  namespace        = kubernetes_namespace_v1.argocd.metadata[0].name
+  create_namespace = false
   repository       = "https://argoproj.github.io/argo-helm"
   chart            = "argo-cd"
   version          = var.argocd_chart_version
 
+  atomic  = true
   wait    = true
-  timeout = 600
+  timeout = 900
 
   values = [
     yamlencode({
+      global = {
+        domain = "argocd.${var.lab_base_domain}"
+      }
       configs = {
+        cm = {
+          "application.resourceTrackingMethod" = "annotation"
+          "oidc.config"                        = local.argocd_oidc_config
+        }
         params = {
           "server.insecure" = true
         }
+        rbac = {
+          "policy.default" = "role:readonly"
+          "policy.csv"     = "g, ArgoCD Admins, role:admin"
+          scopes           = "[groups]"
+        }
+      }
+      controller = {
+        replicas = 2
+        metrics = {
+          enabled = true
+        }
+      }
+      dex = {
+        enabled = false
+      }
+      notifications = {
+        enabled = true
+      }
+      repoServer = {
+        replicas = 2
+        metrics = {
+          enabled = true
+        }
+        volumes = [
+          {
+            name = "argocd-cmp-ksops"
+            configMap = {
+              name = kubernetes_config_map_v1.argocd_cmp_ksops.metadata[0].name
+            }
+          },
+          {
+            name = "sops-age"
+            secret = {
+              secretName = "argocd-sops-age"
+              optional   = true
+            }
+          },
+          {
+            name     = "cmp-tmp"
+            emptyDir = {}
+          },
+        ]
+        extraContainers = [
+          {
+            name    = "ksops"
+            image   = "docker.io/viaductoss/ksops:v4.4.0@sha256:78add3d6191b4efce197a3a5ddcb70ea478270bbf4c18101263ea4a3d7e2d2f6"
+            command = ["/var/run/argocd/argocd-cmp-server"]
+            securityContext = {
+              allowPrivilegeEscalation = false
+              readOnlyRootFilesystem   = true
+              runAsNonRoot             = true
+              runAsUser                = 999
+              capabilities = {
+                drop = ["ALL"]
+              }
+            }
+            volumeMounts = [
+              {
+                name      = "var-files"
+                mountPath = "/var/run/argocd"
+              },
+              {
+                name      = "plugins"
+                mountPath = "/home/argocd/cmp-server/plugins"
+              },
+              {
+                name      = "argocd-cmp-ksops"
+                mountPath = "/home/argocd/cmp-server/config/plugin.yaml"
+                subPath   = "plugin.yaml"
+              },
+              {
+                name      = "sops-age"
+                mountPath = "/home/argocd/.config/sops/age/keys.txt"
+                subPath   = "keys.txt"
+                readOnly  = true
+              },
+              {
+                name      = "cmp-tmp"
+                mountPath = "/tmp"
+              },
+            ]
+          },
+        ]
       }
       server = {
+        replicas = 2
         ingress = {
-          enabled          = true
-          ingressClassName = "nginx"
-          hostname         = var.argocd_hostname
+          enabled = false
         }
+        metrics = {
+          enabled = true
+        }
+      }
+      applicationSet = {
+        replicas = 2
+      }
+      redis = {
+        enabled = false
+      }
+      "redis-ha" = {
+        enabled = true
       }
     }),
   ]
 
   depends_on = [
-    helm_release.ingress_nginx,
+    kubernetes_config_map_v1.argocd_cmp_ksops,
   ]
 }
 
 resource "helm_release" "argocd_root_app" {
-  count = var.gitops_repo_url == "" ? 0 : 1
-
   name      = "argocd-root-app"
   namespace = "argocd"
   chart     = "${path.module}/charts/argocd-root-app"
 
+  atomic  = true
   wait    = true
   timeout = 300
 
   values = [
     yamlencode({
-      gitOpsRepoUrl  = var.gitops_repo_url
-      gitOpsRevision = var.gitops_revision
+      bootstrapRepoUrl      = var.bootstrap_repo_url
+      bootstrapRevision     = var.bootstrap_revision
+      appsRepoUrl           = var.apps_repo_url
+      appsRevision          = var.apps_revision
+      labBaseDomain         = var.lab_base_domain
+      gatewayLoadBalancerIp = var.gateway_load_balancer_ip
+      piholePrimaryIp       = var.pihole_primary_ip
+      piholeSecondaryIp     = var.pihole_secondary_ip
+      forgejoSshIp          = var.forgejo_ssh_ip
     }),
   ]
 
   depends_on = [
     helm_release.argocd,
-  ]
-}
-
-resource "helm_release" "longhorn" {
-  count = var.gitops_repo_url == "" ? 1 : 0
-
-  name       = "longhorn"
-  namespace  = kubernetes_namespace_v1.longhorn_system.metadata[0].name
-  repository = "https://charts.longhorn.io"
-  chart      = "longhorn"
-  version    = var.longhorn_chart_version
-
-  wait    = true
-  timeout = 900
-
-  values = [
-    yamlencode({
-      preUpgradeChecker = {
-        jobEnabled = false
-      }
-      persistence = {
-        defaultClass             = true
-        defaultClassReplicaCount = 2
-        reclaimPolicy            = "Delete"
-      }
-      defaultSettings = {
-        defaultDataPath                         = "/var/mnt/longhorn"
-        defaultReplicaCount                     = 2
-        storageMinimalAvailablePercentage       = 10
-        storageReservedPercentageForDefaultDisk = 10
-        upgradeChecker                          = false
-      }
-      longhornManager = {
-        nodeSelector = {
-          "longhorn.io/storage" = "true"
-        }
-      }
-      longhornDriver = {
-        nodeSelector = {
-          "longhorn.io/storage" = "true"
-        }
-      }
-      longhornUI = {
-        replicas = 1
-        nodeSelector = {
-          "longhorn.io/storage" = "true"
-        }
-      }
-      ingress = {
-        enabled          = true
-        ingressClassName = "nginx"
-        host             = "longhorn.192.168.80.30.sslip.io"
-      }
-    }),
-  ]
-
-  depends_on = [
-    helm_release.ingress_nginx,
-    kubernetes_namespace_v1.longhorn_system,
-  ]
-}
-
-resource "helm_release" "whoami" {
-  count = var.gitops_repo_url == "" ? 1 : 0
-
-  name             = "whoami"
-  namespace        = "lab"
-  create_namespace = true
-  chart            = "${path.module}/charts/whoami"
-
-  wait    = true
-  timeout = 300
-
-  depends_on = [
-    helm_release.ingress_nginx,
-  ]
-}
-
-resource "helm_release" "rancher" {
-  name             = "rancher"
-  namespace        = "cattle-system"
-  create_namespace = true
-  repository       = "https://releases.rancher.com/server-charts/latest"
-  chart            = "rancher"
-  version          = var.rancher_chart_version
-
-  wait    = true
-  timeout = 900
-
-  values = [
-    yamlencode({
-      hostname          = var.rancher_hostname
-      bootstrapPassword = local.rancher_bootstrap_password
-      replicas          = 1
-      ingress = {
-        ingressClassName = "nginx"
-        tls = {
-          source = "rancher"
-        }
-      }
-    }),
-  ]
-
-  depends_on = [
-    helm_release.cert_manager,
-    helm_release.ingress_nginx,
-  ]
-}
-
-resource "helm_release" "metrics_server" {
-  name       = "metrics-server"
-  namespace  = "kube-system"
-  repository = "https://kubernetes-sigs.github.io/metrics-server/"
-  chart      = "metrics-server"
-  version    = var.metrics_server_chart_version
-
-  wait    = true
-  timeout = 300
-
-  values = [
-    yamlencode({
-      args = [
-        "--kubelet-insecure-tls",
-      ]
-    }),
-  ]
-
-  depends_on = [
-    helm_release.cilium,
   ]
 }

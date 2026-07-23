@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: workload-root
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: apps
+  source:
+    repoURL: {{ .Values.appsRepoUrl | quote }}
+    targetRevision: {{ .Values.appsRevision | quote }}
+    path: clusters/talos-lab
+    helm:
+      values: |
+        labBaseDomain: {{ .Values.labBaseDomain | quote }}
+        gatewayLoadBalancerIp: {{ .Values.gatewayLoadBalancerIp | quote }}
+        piholePrimaryIp: {{ .Values.piholePrimaryIp | quote }}
+        piholeSecondaryIp: {{ .Values.piholeSecondaryIp | quote }}
+        forgejoSshIp: {{ .Values.forgejoSshIp | quote }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    syncOptions:
+      - ServerSideApply=true

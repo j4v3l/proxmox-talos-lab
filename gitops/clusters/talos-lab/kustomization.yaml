@@ -1,9 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - apps/longhorn.yaml
-  - workloads/whoami/namespace.yaml
-  - workloads/whoami/deployment.yaml
-  - workloads/whoami/service.yaml
-  - workloads/whoami/ingress.yaml
-

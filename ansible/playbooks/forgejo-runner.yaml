@@ -1,0 +1,7 @@
+---
+- name: Configure isolated Forgejo Actions runner
+  hosts: forgejo_runner
+  become: true
+  roles:
+    - common
+    - forgejo_runner

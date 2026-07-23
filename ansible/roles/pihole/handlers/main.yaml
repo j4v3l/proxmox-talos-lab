@@ -1,0 +1,22 @@
+---
+- name: Restart unbound
+  ansible.builtin.systemd_service:
+    name: unbound
+    enabled: true
+    state: restarted
+
+- name: Restart pihole
+  ansible.builtin.systemd_service:
+    name: pihole.service
+    state: restarted
+    daemon_reload: true
+
+- name: Update gravity
+  ansible.builtin.command:
+    argv:
+      - podman
+      - exec
+      - pihole
+      - pihole
+      - -g
+  changed_when: true

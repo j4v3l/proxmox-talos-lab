@@ -1,0 +1,17 @@
+bucket = "talos-production-terraform-state"
+# The stage-specific key defaults to infra/terraform.tfstate or
+# platform/terraform.tfstate. Override it only for a deliberate migration.
+region = "us-east-1"
+
+# For an S3-compatible endpoint, set endpoints.s3 and the compatibility flags
+# supported by your backend. Credentials belong in AWS_ACCESS_KEY_ID and
+# AWS_SECRET_ACCESS_KEY, never in this file.
+#
+# endpoints = {
+#   s3 = "https://s3.lab-or-provider.example"
+# }
+# skip_credentials_validation = true
+# skip_region_validation      = true
+# skip_requesting_account_id  = true
+# skip_metadata_api_check     = true
+# use_path_style              = true

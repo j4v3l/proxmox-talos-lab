@@ -3,6 +3,27 @@ provider "proxmox" {
   insecure = var.proxmox_insecure
 }
 
+resource "terraform_data" "rebuild_safety_gate" {
+  input = {
+    stopped_pbs_backups_verified      = var.stopped_pbs_backups_verified
+    offline_recovery_capture_verified = var.offline_recovery_capture_verified
+    hardware_capacity_verified        = var.hardware_capacity_verified
+    production_tls_verified           = !var.proxmox_insecure
+  }
+
+  lifecycle {
+    precondition {
+      condition = (
+        var.stopped_pbs_backups_verified &&
+        var.offline_recovery_capture_verified &&
+        var.hardware_capacity_verified &&
+        !var.proxmox_insecure
+      )
+      error_message = "Rebuild blocked: verify stopped PBS backups, offline recovery capture, 64 GiB+/1 TiB+ SSD capacity, and trusted Proxmox TLS first."
+    }
+  }
+}
+
 resource "talos_machine_secrets" "this" {
   talos_version = var.talos_version
 }
@@ -32,8 +53,15 @@ resource "proxmox_download_file" "talos_iso" {
   content_type = "iso"
   datastore_id = var.iso_datastore_id
   node_name    = var.proxmox_node_name
-  url          = data.talos_image_factory_urls.this.urls.iso
-  file_name    = "talos-${var.talos_version}-${talos_image_factory_schematic.this.id}-metal-amd64.iso"
+  url          = local.talos_iso_url
+  file_name    = "talos-${var.talos_version}-${talos_image_factory_schematic.this.id}-metal-amd64${var.secure_boot_enabled ? "-secureboot" : ""}.iso"
+}
+
+resource "terraform_data" "talos_boot_mode" {
+  input = {
+    secure_boot_enabled           = var.secure_boot_enabled
+    secure_boot_pre_enrolled_keys = var.secure_boot_pre_enrolled_keys
+  }
 }
 
 resource "proxmox_virtual_environment_vm" "talos" {
@@ -45,8 +73,9 @@ resource "proxmox_virtual_environment_vm" "talos" {
 
   node_name       = var.proxmox_node_name
   vm_id           = each.value.vm_id
+  bios            = var.secure_boot_enabled ? "ovmf" : "seabios"
   machine         = "q35"
-  scsi_hardware   = "virtio-scsi-single"
+  scsi_hardware   = "virtio-scsi-pci"
   started         = true
   on_boot         = true
   stop_on_destroy = true
@@ -66,6 +95,16 @@ resource "proxmox_virtual_environment_vm" "talos" {
     dedicated = each.value.memory_mb
   }
 
+  dynamic "efi_disk" {
+    for_each = var.secure_boot_enabled ? [1] : []
+
+    content {
+      datastore_id      = local.efi_disk_datastore_id
+      pre_enrolled_keys = var.secure_boot_pre_enrolled_keys
+      type              = "4m"
+    }
+  }
+
   operating_system {
     type = "l26"
   }
@@ -79,7 +118,7 @@ resource "proxmox_virtual_environment_vm" "talos" {
   }
 
   disk {
-    datastore_id = var.vm_datastore_id
+    datastore_id = coalesce(each.value.os_disk_datastore_id, var.vm_datastore_id)
     interface    = "scsi0"
     size         = each.value.os_disk_gb
   }
@@ -88,7 +127,7 @@ resource "proxmox_virtual_environment_vm" "talos" {
     for_each = each.value.longhorn_disk_gb > 0 ? [each.value] : []
 
     content {
-      datastore_id = var.vm_datastore_id
+      datastore_id = coalesce(disk.value.longhorn_disk_datastore_id, var.vm_datastore_id)
       interface    = "scsi1"
       serial       = disk.value.longhorn_serial
       size         = disk.value.longhorn_disk_gb
@@ -101,6 +140,16 @@ resource "proxmox_virtual_environment_vm" "talos" {
   }
 
   serial_device {}
+
+  lifecycle {
+    replace_triggered_by = [
+      terraform_data.talos_boot_mode,
+    ]
+  }
+
+  depends_on = [
+    terraform_data.rebuild_safety_gate,
+  ]
 }
 
 data "talos_machine_configuration" "controlplane" {
@@ -110,9 +159,9 @@ data "talos_machine_configuration" "controlplane" {
   machine_secrets    = talos_machine_secrets.this.machine_secrets
   talos_version      = var.talos_version
   kubernetes_version = var.kubernetes_version
-  config_patches = [
+  config_patches = concat([
     local.talos_common_config_patch,
-  ]
+  ], local.siderolink_config_patches)
 }
 
 data "talos_machine_configuration" "worker" {
@@ -122,9 +171,9 @@ data "talos_machine_configuration" "worker" {
   machine_secrets    = talos_machine_secrets.this.machine_secrets
   talos_version      = var.talos_version
   kubernetes_version = var.kubernetes_version
-  config_patches = [
+  config_patches = concat([
     local.talos_common_config_patch,
-  ]
+  ], local.siderolink_config_patches)
 }
 
 resource "talos_machine_configuration_apply" "controlplane" {
@@ -214,7 +263,7 @@ resource "talos_machine_configuration_apply" "worker" {
       name       = each.value.longhorn_disk_name
       provisioning = {
         diskSelector = {
-          match = format("disk.serial == '%s'", each.value.longhorn_serial)
+          match = format("'%s' in disk.symlinks", format("/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_%s", each.value.longhorn_serial))
         }
         maxSize = format("%dGB", each.value.longhorn_disk_gb)
         minSize = format("%dGB", max(each.value.longhorn_disk_gb - 10, 1))

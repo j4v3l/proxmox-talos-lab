@@ -1,0 +1,99 @@
+bootstrapRepoUrl: https://github.com/j4v3l/proxmox-talos-lab.git
+bootstrapRevision: main
+appsRepoUrl: https://git.lab.home.arpa/j4v3l/talos-apps.git
+appsRevision: main
+labBaseDomain: lab.home.arpa
+gatewayLoadBalancerIp: 192.168.80.30
+piholePrimaryIp: 192.168.80.31
+piholeSecondaryIp: 192.168.80.32
+forgejoSshIp: 192.168.80.33
+
+platformApplications:
+  - name: cert-manager
+    namespace: cert-manager
+    repoURL: https://charts.jetstack.io
+    chart: cert-manager
+    version: v1.21.0
+    valuesFile: platform/cert-manager/values.yaml
+    wave: "0"
+    automated: false
+  - name: trust-manager
+    namespace: cert-manager
+    repoURL: https://charts.jetstack.io
+    chart: trust-manager
+    version: v0.24.0
+    valuesFile: platform/trust-manager/values.yaml
+    wave: "1"
+    automated: false
+  - name: metallb
+    namespace: metallb-system
+    repoURL: https://metallb.github.io/metallb
+    chart: metallb
+    version: 0.16.1
+    valuesFile: platform/metallb/values.yaml
+    wave: "0"
+    automated: false
+  - name: longhorn
+    namespace: longhorn-system
+    repoURL: https://charts.longhorn.io
+    chart: longhorn
+    version: 1.12.0
+    valuesFile: platform/longhorn/values.yaml
+    wave: "5"
+    automated: false
+  - name: cloudnative-pg
+    namespace: cnpg-system
+    repoURL: https://cloudnative-pg.github.io/charts
+    chart: cloudnative-pg
+    version: 0.29.0
+    valuesFile: platform/cloudnative-pg/values.yaml
+    wave: "5"
+    automated: false
+  - name: barman-cloud
+    namespace: cnpg-system
+    repoURL: https://cloudnative-pg.github.io/charts
+    chart: plugin-barman-cloud
+    version: 0.7.0
+    valuesFile: platform/barman-cloud/values.yaml
+    wave: "6"
+    automated: false
+  - name: authentik
+    namespace: authentik
+    repoURL: https://charts.goauthentik.io
+    chart: authentik
+    version: 2026.5.6
+    valuesFile: platform/authentik/values.yaml
+    wave: "20"
+    automated: false
+  - name: rancher
+    namespace: cattle-system
+    repoURL: https://releases.rancher.com/server-charts/latest
+    chart: rancher
+    version: 2.14.2
+    valuesFile: platform/rancher/values.yaml
+    wave: "25"
+    automated: false
+  - name: kyverno
+    namespace: kyverno
+    repoURL: https://kyverno.github.io/kyverno
+    chart: kyverno
+    version: 3.8.2
+    valuesFile: platform/kyverno/values.yaml
+    wave: "10"
+    automated: false
+  - name: monitoring
+    namespace: monitoring
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    version: 87.19.0
+    valuesFile: platform/monitoring/values.yaml
+    wave: "15"
+    automated: true
+  - name: blackbox-exporter
+    namespace: monitoring
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: prometheus-blackbox-exporter
+    version: 11.15.1
+    valuesFile: platform/blackbox-exporter/values.yaml
+    wave: "16"
+    automated: true

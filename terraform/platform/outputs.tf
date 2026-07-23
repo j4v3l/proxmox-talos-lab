@@ -1,21 +1,27 @@
-output "rancher_url" {
-  description = "Rancher UI URL."
-  value       = "http://${var.rancher_hostname}"
-}
-
 output "argocd_url" {
-  description = "Argo CD UI URL."
-  value       = "http://${var.argocd_hostname}"
+  description = "Argo CD LAN/VPN URL through the shared Cilium Gateway."
+  value       = "https://argocd.${var.lab_base_domain}"
 }
 
-output "ingress_ip" {
-  description = "MetalLB IP assigned to ingress-nginx."
-  value       = var.ingress_load_balancer_ip
+output "gateway_ip" {
+  description = "Shared Cilium Gateway address."
+  value       = var.gateway_load_balancer_ip
 }
 
-output "rancher_bootstrap_password" {
-  description = "Rancher bootstrap password. Stored in Terraform state."
-  value       = local.rancher_bootstrap_password
-  sensitive   = true
+output "dns_ips" {
+  description = "Primary and secondary Pi-hole addresses advertised by OPNsense."
+  value = [
+    var.pihole_primary_ip,
+    var.pihole_secondary_ip,
+  ]
 }
 
+output "forgejo_ssh_endpoint" {
+  description = "Forgejo SSH endpoint."
+  value       = "${var.forgejo_ssh_ip}:22"
+}
+
+output "gateway_api_version" {
+  description = "Terraform-managed Gateway API CRD version."
+  value       = var.gateway_api_version
+}

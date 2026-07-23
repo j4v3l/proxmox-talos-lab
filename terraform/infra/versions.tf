@@ -1,6 +1,14 @@
 terraform {
   required_version = ">= 1.15.0"
 
+  backend "s3" {
+    bucket       = "talos-production-terraform-state"
+    encrypt      = true
+    key          = "infra/terraform.tfstate"
+    region       = "us-east-1"
+    use_lockfile = true
+  }
+
   required_providers {
     local = {
       source  = "hashicorp/local"
@@ -16,4 +24,3 @@ terraform {
     }
   }
 }
-

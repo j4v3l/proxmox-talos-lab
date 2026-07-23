@@ -1,12 +1,13 @@
 kubeconfig_path = "../../_out/kubeconfig"
 
-# Push this repository to GitHub, then set the HTTPS clone URL here.
-gitops_repo_url = "https://github.com/YOUR_USERNAME/Proxmox-Talos.git"
-gitops_revision = "main"
-
 cluster_vip              = "192.168.80.10"
-ingress_load_balancer_ip = "192.168.80.30"
-metallb_address_pool     = ["192.168.80.30-192.168.80.49"]
+gateway_load_balancer_ip = "192.168.80.30"
+pihole_primary_ip        = "192.168.80.31"
+pihole_secondary_ip      = "192.168.80.32"
+forgejo_ssh_ip           = "192.168.80.33"
 
-rancher_hostname = "rancher.192.168.80.30.sslip.io"
-argocd_hostname  = "argocd.192.168.80.30.sslip.io"
+bootstrap_repo_url  = "https://github.com/j4v3l/proxmox-talos-lab.git"
+bootstrap_revision  = "main"
+apps_repo_url       = "https://git.lab.home.arpa/j4v3l/talos-apps.git"
+apps_revision       = "main"
+lab_base_domain     = "lab.home.arpa"
