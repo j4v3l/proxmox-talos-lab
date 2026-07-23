@@ -1,0 +1,21 @@
+[Unit]
+Description=Rootless Podman API for isolated Forgejo runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ forgejo_runner_user }}
+Group={{ forgejo_runner_user }}
+RuntimeDirectory=forgejo-runner
+RuntimeDirectoryMode=0700
+Environment=XDG_RUNTIME_DIR=/run/forgejo-runner
+Environment=HOME=/var/lib/forgejo-runner
+ExecStart=/usr/bin/podman system service --time=0 unix:///run/forgejo-runner/podman.sock
+Restart=always
+RestartSec=5
+Delegate=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

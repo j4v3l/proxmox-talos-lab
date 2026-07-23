@@ -1,0 +1,140 @@
+---
+- name: Require externally supplied Pi-hole password
+  ansible.builtin.assert:
+    that:
+      - pihole_web_password | length >= 16
+    fail_msg: Supply pihole_web_password from an encrypted file outside this repository.
+  no_log: true
+
+- name: Install Pi-hole runtime packages
+  ansible.builtin.apt:
+    name:
+      - podman
+      - unbound
+    state: present
+    update_cache: true
+
+- name: Create Pi-hole state directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - path: /etc/pihole-container
+      mode: "0700"
+    - path: /var/lib/pihole
+      mode: "0750"
+    - path: /etc/containers/systemd
+      mode: "0755"
+
+- name: Install hardened Unbound configuration
+  ansible.builtin.template:
+    src: unbound-pihole.conf.j2
+    dest: /etc/unbound/unbound.conf.d/pihole.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart unbound
+
+- name: Store Pi-hole container environment
+  ansible.builtin.copy:
+    dest: /etc/pihole-container/pihole.env
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      TZ={{ pihole_timezone }}
+      FTLCONF_webserver_api_password={{ pihole_web_password }}
+      FTLCONF_webserver_api_app_sudo=true
+      FTLCONF_dns_upstreams=127.0.0.1#5335
+      FTLCONF_dns_dnssec=true
+      FTLCONF_dhcp_active=false
+      FTLCONF_misc_dnsmasq_lines={{ pihole_local_records | join(';') }}
+  no_log: true
+  notify: Restart pihole
+
+- name: Install Pi-hole Quadlet
+  ansible.builtin.template:
+    src: pihole.container.j2
+    dest: /etc/containers/systemd/pihole.container
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart pihole
+
+- name: Reload systemd for Quadlet
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Start Pi-hole
+  ansible.builtin.systemd_service:
+    name: pihole.service
+    enabled: true
+    state: started
+
+- name: Wait for Pi-hole API
+  ansible.builtin.uri:
+    url: http://127.0.0.1/admin/login
+    status_code: 200
+  register: pihole_api
+  until: pihole_api.status == 200
+  retries: 30
+  delay: 5
+
+- name: Seed curated adlists
+  ansible.builtin.command:
+    argv:
+      - podman
+      - exec
+      - pihole
+      - pihole-FTL
+      - sqlite3
+      - /etc/pihole/gravity.db
+      - "INSERT OR IGNORE INTO adlist (address, enabled, comment) VALUES ('{{ item }}', 1, 'managed-by-ansible');"
+  loop: "{{ pihole_adlists }}"
+  changed_when: true
+  notify: Update gravity
+
+- name: Install daily gravity service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/pihole-gravity.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Update Pi-hole gravity
+      After=pihole.service
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/bin/podman exec pihole pihole -g
+      Nice=10
+      IOSchedulingClass=idle
+
+- name: Install daily gravity timer with jitter
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/pihole-gravity.timer
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Daily Pi-hole gravity update
+
+      [Timer]
+      OnCalendar=*-*-* 03:15:00
+      RandomizedDelaySec=1h
+      Persistent=true
+
+      [Install]
+      WantedBy=timers.target
+
+- name: Enable daily gravity timer
+  ansible.builtin.systemd_service:
+    name: pihole-gravity.timer
+    enabled: true
+    state: started
+    daemon_reload: true

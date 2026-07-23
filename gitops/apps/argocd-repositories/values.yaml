@@ -1,5 +1,0 @@
-repositories:
-  - name: forgejo-helm-oci
-    url: code.forgejo.org/forgejo-helm
-    type: helm
-    enableOCI: "true"

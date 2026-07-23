@@ -3,6 +3,36 @@ output "cluster_endpoint" {
   value       = "https://${var.cluster_vip}:6443"
 }
 
+output "secure_boot_enabled" {
+  description = "Whether Talos Secure Boot is enabled for this cluster."
+  value       = var.secure_boot_enabled
+}
+
+output "siderolink_enabled" {
+  description = "Whether SideroLink is enabled for this cluster."
+  value       = var.siderolink_enabled
+}
+
+output "siderolink_configured" {
+  description = "Whether SideroLink is both enabled and has a non-empty Omni API URL configured."
+  value       = nonsensitive(local.siderolink_configured)
+}
+
+output "efi_disk_datastore_id" {
+  description = "Datastore used for the Talos EFI vars disks."
+  value       = local.efi_disk_datastore_id
+}
+
+output "talos_iso_url" {
+  description = "Talos boot ISO URL selected by the infra configuration."
+  value       = local.talos_iso_url
+}
+
+output "talos_installer_image" {
+  description = "Talos installer image selected by the infra configuration."
+  value       = local.talos_installer_image
+}
+
 output "controlplane_ips" {
   description = "Talos control-plane node IPs."
   value       = local.controlplane_ips
@@ -34,3 +64,9 @@ output "dhcp_reservations" {
   }
 }
 
+output "service_vm_ips" {
+  description = "Static service VM addresses."
+  value = {
+    for key, vm in var.service_vms : key => vm.ip
+  }
+}

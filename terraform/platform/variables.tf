@@ -10,83 +10,76 @@ variable "cluster_vip" {
   default     = "192.168.80.10"
 }
 
-variable "ingress_load_balancer_ip" {
-  description = "MetalLB IP assigned to ingress-nginx."
+variable "gateway_load_balancer_ip" {
+  description = "MetalLB IP requested by the shared Cilium Gateway."
   type        = string
   default     = "192.168.80.30"
 }
 
-variable "metallb_address_pool" {
-  description = "MetalLB L2 address pool."
-  type        = list(string)
-  default     = ["192.168.80.30-192.168.80.49"]
-}
-
-variable "gitops_repo_url" {
-  description = "Optional GitHub repository URL containing this repository after you push it. Leave empty for local Terraform-managed smoke apps."
-  type        = string
-  default     = ""
-}
-
-variable "gitops_revision" {
-  description = "Git revision Argo CD should sync."
-  type        = string
-  default     = "dev"
-}
-
-variable "lab_base_domain" {
-  description = "Base DNS suffix for local lab hostnames."
-  type        = string
-  default     = "lab.home.arpa"
-}
-
-variable "adguard_dns_ip" {
-  description = "Dedicated MetalLB IP for the AdGuard Home DNS service."
+variable "pihole_primary_ip" {
+  description = "External primary Pi-hole address. This must not be in the MetalLB pool."
   type        = string
   default     = "192.168.80.31"
 }
 
-variable "rancher_hostname" {
-  description = "Rancher ingress hostname."
+variable "pihole_secondary_ip" {
+  description = "Kubernetes secondary Pi-hole LoadBalancer address."
   type        = string
-  default     = "rancher.192.168.80.30.sslip.io"
+  default     = "192.168.80.32"
 }
 
-variable "argocd_hostname" {
-  description = "Argo CD ingress hostname."
+variable "forgejo_ssh_ip" {
+  description = "Dedicated Forgejo SSH LoadBalancer address."
   type        = string
-  default     = "argocd.192.168.80.30.sslip.io"
+  default     = "192.168.80.33"
 }
 
-variable "rancher_bootstrap_password" {
-  description = "Optional Rancher bootstrap password. If null, Terraform generates one and stores it in state."
+variable "bootstrap_repo_url" {
+  description = "Public off-cluster bootstrap and disaster-recovery repository."
   type        = string
-  default     = null
-  sensitive   = true
+  default     = "https://github.com/j4v3l/proxmox-talos-lab.git"
+}
+
+variable "bootstrap_revision" {
+  description = "Protected bootstrap repository revision."
+  type        = string
+  default     = "main"
+}
+
+variable "apps_repo_url" {
+  description = "Authoritative private Forgejo application repository."
+  type        = string
+  default     = "https://git.lab.home.arpa/j4v3l/talos-apps.git"
+}
+
+variable "apps_revision" {
+  description = "Protected application repository revision."
+  type        = string
+  default     = "main"
+}
+
+variable "lab_base_domain" {
+  description = "LAN/VPN-only DNS suffix."
+  type        = string
+  default     = "lab.home.arpa"
+}
+
+variable "gateway_api_version" {
+  description = "Gateway API CRD release."
+  type        = string
+  default     = "v1.4.1"
+}
+
+variable "gateway_api_manifest_sha256" {
+  description = "Expected SHA-256 of the pinned Gateway API standard-install manifest."
+  type        = string
+  default     = "73b91b77f6be023a8c92c969fc664e5bd3b1a28aea59eac9ebc904607354dad2"
 }
 
 variable "cilium_chart_version" {
   description = "Cilium Helm chart version."
   type        = string
-  default     = "1.19.4"
-}
-
-variable "cert_manager_chart_version" {
-  description = "cert-manager Helm chart version."
-  type        = string
-  default     = "v1.20.2"
-}
-
-variable "metallb_chart_version" {
-  description = "MetalLB Helm chart version."
-  type        = string
-  default     = "0.16.1"
-}
-
-variable "ingress_nginx_chart_version" {
-  description = "ingress-nginx Helm chart version."
-  type        = string
-  default     = "4.15.1"
+  default     = "1.19.6"
 }
 
 variable "argocd_chart_version" {
@@ -95,20 +88,14 @@ variable "argocd_chart_version" {
   default     = "9.5.17"
 }
 
-variable "rancher_chart_version" {
-  description = "Rancher Helm chart version."
+variable "argocd_oidc_client_id" {
+  description = "Non-secret Authentik OIDC client ID. The client secret is injected directly into argocd-secret outside Terraform."
   type        = string
-  default     = "2.14.2"
+  default     = "argocd"
 }
 
-variable "longhorn_chart_version" {
-  description = "Longhorn Helm chart version used by local smoke bootstrap when gitops_repo_url is empty."
+variable "argocd_oidc_issuer" {
+  description = "Authentik OIDC issuer URL."
   type        = string
-  default     = "1.11.2"
-}
-
-variable "metrics_server_chart_version" {
-  description = "metrics-server Helm chart version."
-  type        = string
-  default     = "3.13.0"
+  default     = "https://auth.lab.home.arpa/application/o/argocd/"
 }

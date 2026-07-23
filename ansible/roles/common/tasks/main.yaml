@@ -1,0 +1,37 @@
+---
+- name: Install baseline packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - jq
+      - qemu-guest-agent
+      - unattended-upgrades
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Enable qemu guest agent
+  ansible.builtin.systemd_service:
+    name: qemu-guest-agent
+    enabled: true
+    state: started
+
+- name: Enable automatic security updates
+  ansible.builtin.systemd_service:
+    name: unattended-upgrades
+    enabled: true
+    state: started
+
+- name: Disable password SSH authentication
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/60-production.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+      X11Forwarding no
+  notify: Restart ssh

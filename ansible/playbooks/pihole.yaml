@@ -1,0 +1,7 @@
+---
+- name: Configure cluster-independent primary Pi-hole
+  hosts: pihole
+  become: true
+  roles:
+    - common
+    - pihole

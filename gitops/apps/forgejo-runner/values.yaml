@@ -1,7 +1,0 @@
-image:
-  repository: data.forgejo.org/forgejo/runner
-  tag: 12.10.2
-connectionSecretName: forgejo-runner-connection
-runnerLabel: lab-host:host
-hostAliases: []
-extraEnv: []

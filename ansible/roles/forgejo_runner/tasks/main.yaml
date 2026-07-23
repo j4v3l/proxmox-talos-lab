@@ -1,0 +1,106 @@
+---
+- name: Install rootless Podman dependencies
+  ansible.builtin.apt:
+    name:
+      - dbus-user-session
+      - fuse-overlayfs
+      - passt
+      - podman
+      - slirp4netns
+      - uidmap
+    state: present
+    update_cache: true
+
+- name: Create dedicated runner account
+  ansible.builtin.user:
+    name: "{{ forgejo_runner_user }}"
+    uid: "{{ forgejo_runner_uid }}"
+    create_home: true
+    shell: /usr/sbin/nologin
+    password_lock: true
+    system: true
+
+- name: Configure subordinate IDs
+  ansible.builtin.lineinfile:
+    path: "{{ item.path }}"
+    regexp: "^{{ forgejo_runner_user }}:"
+    line: "{{ forgejo_runner_user }}:200000:65536"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - path: /etc/subuid
+    - path: /etc/subgid
+
+- name: Create runner directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ forgejo_runner_user }}"
+    group: "{{ forgejo_runner_user }}"
+    mode: "0700"
+  loop:
+    - /var/lib/forgejo-runner
+    - /var/lib/forgejo-runner/cache
+
+- name: Install pinned Forgejo runner binary
+  ansible.builtin.get_url:
+    url: "https://code.forgejo.org/forgejo/runner/releases/download/v{{ forgejo_runner_version }}/forgejo-runner-{{ forgejo_runner_version }}-linux-amd64"
+    dest: /usr/local/bin/forgejo-runner
+    checksum: "sha256:{{ forgejo_runner_sha256 }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Verify Podman 5.3 or newer
+  ansible.builtin.command:
+    argv:
+      - podman
+      - version
+      - --format
+      - "{{ '{{' }}.Client.Version{{ '}}' }}"
+  register: podman_version
+  changed_when: false
+  failed_when: podman_version.stdout is version('5.3.0', '<')
+
+- name: Install runner configuration
+  ansible.builtin.template:
+    src: runner-config.yaml.j2
+    dest: /etc/forgejo-runner.yaml
+    owner: root
+    group: "{{ forgejo_runner_user }}"
+    mode: "0640"
+  notify: Restart forgejo runner
+
+- name: Install rootless Podman API service
+  ansible.builtin.template:
+    src: forgejo-runner-podman.service.j2
+    dest: /etc/systemd/system/forgejo-runner-podman.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart forgejo runner
+
+- name: Install Forgejo runner service
+  ansible.builtin.template:
+    src: forgejo-runner.service.j2
+    dest: /etc/systemd/system/forgejo-runner.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart forgejo runner
+
+- name: Enable rootless Podman API
+  ansible.builtin.systemd_service:
+    name: forgejo-runner-podman.service
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Report registration gate
+  ansible.builtin.debug:
+    msg: >-
+      Runner service is installed but will remain stopped until
+      /var/lib/forgejo-runner/.runner is created with the repository-scoped
+      offline registration script.

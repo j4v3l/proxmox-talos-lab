@@ -1,0 +1,26 @@
+---
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Install Aqua
+        uses: https://github.com/aquaproj/aqua-installer@d1fe50798dbadd4eb5b98957290ca175f6b4870f # v4.0.2
+        with:
+          aqua_version: v2.55.0
+      - name: Install pinned tools
+        run: aqua install
+      - name: Validate
+        run: aqua exec -- just ci

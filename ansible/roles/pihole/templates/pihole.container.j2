@@ -1,0 +1,23 @@
+[Unit]
+Description=Pi-hole primary DNS
+After=network-online.target unbound.service
+Wants=network-online.target
+Requires=unbound.service
+
+[Container]
+Image={{ pihole_image }}
+ContainerName=pihole
+Network=host
+EnvironmentFile=/etc/pihole-container/pihole.env
+Volume=/var/lib/pihole:/etc/pihole:Z
+NoNewPrivileges=true
+DropCapability=all
+AddCapability=chown dac_override fowner setgid setuid net_bind_service
+
+[Service]
+Restart=always
+RestartSec=10
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,20 @@
+---
+extends: default
+
+ignore: |
+  **/templates/**
+
+rules:
+  document-start: disable
+  line-length:
+    max: 160
+    level: warning
+  truthy:
+    allowed-values:
+      - "true"
+      - "false"
+      - "on"
+  comments:
+    min-spaces-from-content: 1
+  indentation:
+    indent-sequences: consistent

@@ -1,8 +1,0 @@
-hosts:
-  - status.192.168.80.30.sslip.io
-  - status.lab.home.arpa
-image:
-  repository: louislam/uptime-kuma
-  tag: "2.4.0"
-storageClassName: longhorn-lab-single
-storageSize: 4Gi

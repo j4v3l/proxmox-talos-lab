@@ -1,0 +1,10 @@
+title = "proxmox-talos-lab gitleaks policy"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Public documentation examples only"
+paths = [
+  '''terraform/.+\.tfvars\.example$''',
+]

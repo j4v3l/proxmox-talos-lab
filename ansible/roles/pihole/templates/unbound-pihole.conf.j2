@@ -1,0 +1,25 @@
+server:
+  interface: 127.0.0.1
+  port: 5335
+  do-ip4: yes
+  do-udp: yes
+  do-tcp: yes
+  do-ip6: no
+  prefer-ip6: no
+  harden-glue: yes
+  harden-dnssec-stripped: yes
+  harden-below-nxdomain: yes
+  qname-minimisation: yes
+  aggressive-nsec: yes
+  prefetch: yes
+  prefetch-key: yes
+  edns-buffer-size: 1232
+  cache-min-ttl: 300
+  cache-max-ttl: 86400
+  serve-expired: yes
+  hide-identity: yes
+  hide-version: yes
+  access-control: 127.0.0.0/8 allow
+  private-address: 10.0.0.0/8
+  private-address: 172.16.0.0/12
+  private-address: 192.168.0.0/16

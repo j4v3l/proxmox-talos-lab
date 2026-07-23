@@ -1,6 +1,0 @@
-apiVersion: v2
-name: adguard-home
-description: AdGuard Home UI plus DNS service for the lab.
-type: application
-version: 0.1.0
-appVersion: "0.107.76"

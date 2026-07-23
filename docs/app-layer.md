@@ -1,133 +1,17 @@
-# GitOps App Layer
+# Hybrid GitOps
 
-This repo keeps Terraform focused on cluster bootstrap and uses Argo CD for the beginner app layer.
+GitHub `j4v3l/proxmox-talos-lab` is the public bootstrap/DR source. Forgejo `j4v3l/talos-apps` is authoritative for applications, and private GitHub `j4v3l/talos-apps` is its one-way push mirror.
 
-## First Argo Sync
+Terraform installs only Gateway API CRDs, Cilium, Argo CD/KSOPS, and `talos-bootstrap`. The bootstrap Application creates exact `bootstrap`, `platform`, and `apps` AppProjects and pinned two-source Applications. No Application uses `default`.
 
-1. Push this repository to GitHub or another external Git provider.
-2. Set `gitops_repo_url` in `terraform/platform/lab.auto.tfvars`.
-3. Re-run the platform stage:
+Protected `main` is the only deployment branch. Platform applications that own CRDs, storage, databases, or identity have no automated sync policy. Monitoring and Pi-hole may self-heal; Pi-hole pruning is disabled to protect its retained PVC.
 
-```bash
-cd terraform/platform
-terraform apply
-```
+## Private repository bootstrap
 
-4. Confirm the root app and child apps appear:
+1. Create a read-only Forgejo deploy key for Argo CD.
+2. Inject the repository Secret directly into `argocd`; never put it in Terraform.
+3. Run `just bootstrap-sops-age` to inject the age identity.
+4. Add only SOPS ciphertext under `talos-apps/secrets`.
+5. Manually sync platform CRDs/controllers in wave order, then `platform-manifests`, databases, identity, Forgejo, and Pi-hole.
 
-```bash
-export KUBECONFIG="$(pwd)/../../_out/kubeconfig"
-kubectl -n argocd get applications
-```
-
-The cluster overlay creates Argo apps for Longhorn, the lab StorageClass, Homarr, Uptime Kuma, Forgejo, monitoring, Loki, Alloy, AdGuard Home, and helper charts.
-
-## Hostnames
-
-Bootstrap access keeps using `sslip.io` on `192.168.80.30`.
-
-Daily-use hostnames are:
-
-- `rancher.lab.home.arpa`
-- `argocd.lab.home.arpa`
-- `longhorn.lab.home.arpa`
-- `homarr.lab.home.arpa`
-- `status.lab.home.arpa`
-- `git.lab.home.arpa`
-- `grafana.lab.home.arpa`
-- `prometheus.lab.home.arpa`
-- `adguard.lab.home.arpa`
-- `whoami.lab.home.arpa`
-
-## AdGuard Home
-
-AdGuard Home exposes:
-
-- UI through ingress on `adguard.lab.home.arpa`
-- DNS through `192.168.80.31:53` TCP/UDP
-
-The chart pre-seeds a minimal config so DNS works on first boot. Then add local rewrites in the UI:
-
-- `rancher.lab.home.arpa -> 192.168.80.30`
-- `argocd.lab.home.arpa -> 192.168.80.30`
-- `longhorn.lab.home.arpa -> 192.168.80.30`
-- `homarr.lab.home.arpa -> 192.168.80.30`
-- `status.lab.home.arpa -> 192.168.80.30`
-- `git.lab.home.arpa -> 192.168.80.30`
-- `grafana.lab.home.arpa -> 192.168.80.30`
-- `prometheus.lab.home.arpa -> 192.168.80.30`
-- `adguard.lab.home.arpa -> 192.168.80.30`
-- `whoami.lab.home.arpa -> 192.168.80.30`
-
-Validate with:
-
-```bash
-dig @192.168.80.31 grafana.lab.home.arpa
-dig @192.168.80.31 github.com
-```
-
-Then point a test client at `192.168.80.31` as its DNS server and confirm query logs appear in AdGuard.
-
-## First Logins
-
-Forgejo generates its admin secret in-cluster:
-
-```bash
-kubectl -n forgejo get secret forgejo-admin \
-  -o jsonpath='{.data.username}' | base64 -d; echo
-kubectl -n forgejo get secret forgejo-admin \
-  -o jsonpath='{.data.password}' | base64 -d; echo
-```
-
-Grafana stores credentials in its release secret:
-
-```bash
-kubectl -n monitoring get secret monitoring-grafana \
-  -o jsonpath='{.data.admin-user}' | base64 -d; echo
-kubectl -n monitoring get secret monitoring-grafana \
-  -o jsonpath='{.data.admin-password}' | base64 -d; echo
-```
-
-Homarr and Uptime Kuma are intentionally light on bootstrap data. Create the first dashboards and monitors manually in the UI.
-
-Suggested first Uptime Kuma monitors:
-
-- `https://rancher.lab.home.arpa`
-- `http://whoami.lab.home.arpa`
-- `https://git.lab.home.arpa`
-- `192.168.80.10:6443` as TCP
-- `192.168.80.30:80` as TCP
-- `192.168.80.31:53` as DNS
-
-## Forgejo Runner
-
-The `forgejo-runner` Argo app is created but not auto-synced. Bootstrap it after Forgejo is live.
-
-1. In Forgejo, create a new runner in the UI and copy the displayed `uuid` and `token`.
-2. Create the connection secret in Kubernetes:
-
-```bash
-kubectl -n forgejo create secret generic forgejo-runner-connection \
-  --from-literal=FORGEJO_INSTANCE_URL=http://forgejo-http.forgejo.svc.cluster.local:3000 \
-  --from-literal=FORGEJO_RUNNER_UUID='replace-me' \
-  --from-literal=FORGEJO_RUNNER_TOKEN='replace-me'
-```
-
-3. Sync the runner app from Argo CD.
-
-The runner is intentionally minimal and only advertises `lab-host:host` for beginner lint and test jobs. It does not build containers. In the smoke lab, the runner chart also maps `git.lab.home.arpa` to the ingress IP and disables Git SSL verification so repository operations still work before you install a trusted certificate.
-
-Example workflow:
-
-```yaml
-on:
-  push:
-
-jobs:
-  shell-check:
-    runs-on: lab-host
-    steps:
-      - uses: https://data.forgejo.org/actions/checkout@v4
-      - run: uname -a
-      - run: just validate
-```
+The dedicated runner is registered to a repository, has capacity one, and uses rootless Podman job containers. It has no host label and no cluster, Proxmox, Talos, or backup credential.

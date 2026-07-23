@@ -1,29 +1,31 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: talos-lab
+  name: talos-bootstrap
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
-  project: default
+  project: bootstrap
   source:
-    repoURL: {{ required "gitOpsRepoUrl is required" .Values.gitOpsRepoUrl | quote }}
-    targetRevision: {{ .Values.gitOpsRevision | quote }}
+    repoURL: {{ required "bootstrapRepoUrl is required" .Values.bootstrapRepoUrl | quote }}
+    targetRevision: {{ .Values.bootstrapRevision | quote }}
     path: gitops/clusters/talos-lab
     helm:
       values: |
-        gitOpsRepoUrl: {{ .Values.gitOpsRepoUrl | quote }}
-        gitOpsRevision: {{ .Values.gitOpsRevision | quote }}
+        bootstrapRepoUrl: {{ .Values.bootstrapRepoUrl | quote }}
+        bootstrapRevision: {{ .Values.bootstrapRevision | quote }}
+        appsRepoUrl: {{ .Values.appsRepoUrl | quote }}
+        appsRevision: {{ .Values.appsRevision | quote }}
         labBaseDomain: {{ .Values.labBaseDomain | quote }}
-        ingressLoadBalancerIp: {{ .Values.ingressLoadBalancerIp | quote }}
-        adguardDnsIp: {{ .Values.adguardDnsIp | quote }}
+        gatewayLoadBalancerIp: {{ .Values.gatewayLoadBalancerIp | quote }}
+        piholePrimaryIp: {{ .Values.piholePrimaryIp | quote }}
+        piholeSecondaryIp: {{ .Values.piholeSecondaryIp | quote }}
+        forgejoSshIp: {{ .Values.forgejoSshIp | quote }}
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true

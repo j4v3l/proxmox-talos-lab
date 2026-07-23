@@ -1,0 +1,15 @@
+---
+pihole_image: docker.io/pihole/pihole:2026.05.0@sha256:70a9c11171ded2eee735d88c127996da209284a329d50f5ae59c06b861d401b3
+pihole_timezone: America/New_York
+pihole_web_password: ""
+pihole_local_records:
+  - 192.168.80.30 auth.lab.home.arpa
+  - 192.168.80.30 argocd.lab.home.arpa
+  - 192.168.80.30 git.lab.home.arpa
+  - 192.168.80.30 longhorn.lab.home.arpa
+  - 192.168.80.30 pihole.lab.home.arpa
+  - 192.168.80.30 pihole-secondary.lab.home.arpa
+pihole_adlists:
+  - https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/pro.txt
+  - https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/tif.medium.txt
+  - https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/doh.txt
