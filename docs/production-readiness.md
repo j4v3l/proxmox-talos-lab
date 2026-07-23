@@ -17,6 +17,10 @@ Production is blocked until every item is evidenced.
 - Cilium connectivity and Gateway API smoke/conformance tests pass.
 - Every Application is `Synced/Healthy` for 24 hours, uses a non-default project, and shows no repeated self-heal.
 - Protected `main`, required CI, signed/linear history, no direct/force push or deletion.
+- GitHub Pro (or an equivalent plan) enabled for private-repository branch
+  protection and secret-scanning push protection on `j4v3l/talos-apps`.
+  GitHub currently returns HTTP 403/422 for those controls on the private
+  repository; Dependabot alerts and automated security fixes are enabled.
 
 ## Data and identity
 
